@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TidyHome – Cleaning Companion</title>
+  <meta name="description" content="A simple cleaning & tidying app to keep your home on track." />
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png" type="image/png">
+  <meta name="theme-color" content="#4682B4">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --muted: #6b7280;
+      --accent: #60a5fa;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --text: #e5e7eb;
+      --text-strong: #f9fafb;
+      --chip: #1f2937;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif; }
+    header { position: sticky; top: 0; backdrop-filter: saturate(1.2) blur(6px); background: rgba(15,23,42,0.75); border-bottom: 1px solid #1f2937; z-index: 10; }
+    header .inner { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+    header h1 { margin: 0; font-size: 18px; letter-spacing: .4px; color: var(--text-strong); }
+    header .badge { margin-left: auto; background: var(--chip); padding: 6px 10px; border-radius: 999px; font-size: 12px; color: var(--muted); }
+    main { max-width: 1024px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+    .card { grid-column: span 12; background: var(--card); border: 1px solid #1f2937; border-radius: 14px; padding: 16px; }
+    @media (min-width: 900px) {
+      .card.half { grid-column: span 6; }
+      .card.third { grid-column: span 4; }
+    }
+    .card h2 { margin: 0 0 10px; font-size: 16px; color: var(--text-strong); }
+    .muted { color: var(--muted); font-size: 12px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 12px; }
+    input, select, button, textarea { background: #0b1220; color: var(--text); border: 1px solid #1f2937; border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+    button { cursor: pointer; transition: .15s transform; }
+    button:hover { transform: translateY(-1px); }
+    .btn-primary { background: var(--accent); border-color: #3b82f6; color: #0b1220; font-weight: 600; }
+    .btn-ghost { background: var(--chip); color: var(--text); }
+    .chip { background: var(--chip); padding: 6px 10px; border-radius: 999px; font-size: 12px; }
+    .task { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; padding: 12px; border: 1px solid #1f2937; border-radius: 12px; margin-bottom: 10px; background: #0b1220; }
+    .task .title { font-weight: 600; }
+    .task.overdue { border-color: #7f1d1d; }
+    .task.due-today { border-color: #78350f; }
+    .task .meta { font-size: 12px; color: var(--muted); }
+    .pill { padding: 4px 8px; border-radius: 999px; font-size: 12px; }
+    .pill.ok { background: rgba(34,197,94,.15); color: #22c55e; border: 1px solid rgba(34,197,94,.35); }
+    .pill.warn { background: rgba(245,158,11,.15); color: #f59e0b; border: 1px solid rgba(245,158,11,.35); }
+    .pill.bad { background: rgba(239,68,68,.15); color: #ef4444; border: 1px solid rgba(239,68,68,.35); }
+    .empty { border: 1px dashed #374151; border-radius: 12px; padding: 16px; text-align: center; color: var(--muted); }
+    .footer { text-align: center; padding: 12px; color: var(--muted); font-size: 12px; }
+    .tabbar { position: sticky; bottom: 0; padding: 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; backdrop-filter: blur(6px); background: rgba(15,23,42,.7); border-top: 1px solid #1f2937; }
+    .tabbar button { padding: 10px; }
+    .hidden { display: none !important; }
+    .right { text-align: right; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="inner">
+    <img src="icon-192.png" alt="" width="24" height="24" style="border-radius:6px">
+    <h1>TidyHome</h1>
+    <span class="badge" id="streakBadge">Streak: 0 days</span>
+  </div>
+</header>
+<main>
+  <section class="grid">
+    <div class="card half" id="dashboardCard">
+      <h2>Today</h2>
+      <div class="toolbar">
+        <button class="btn-primary" id="addQuick">+ Quick Add</button>
+        <button class="btn-ghost" id="exportData">Export</button>
+        <label class="row muted"><input type="time" id="remindAt"> <span style="margin-left:6px">Daily reminder</span></label>
+      </div>
+      <div id="todayList"></div>
+      <div id="todayEmpty" class="empty hidden">No tasks for today. Add some or enjoy your free time ✨</div>
+    </div>
+    <div class="card half">
+      <h2>Upcoming</h2>
+      <div id="upcomingList"></div>
+      <div id="upcomingEmpty" class="empty hidden">Nothing upcoming yet.</div>
+    </div>
+    <div class="card third">
+      <h2>Rooms</h2>
+      <div class="toolbar">
+        <input id="roomName" placeholder="Add a room (e.g., Kitchen)" />
+        <button class="btn-primary" id="addRoom">Add</button>
+      </div>
+      <ul id="roomList" class="muted" style="list-style:none; padding-left:0; margin:0;"></ul>
+    </div>
+    <div class="card third">
+      <h2>People</h2>
+      <div class="toolbar">
+        <input id="personName" placeholder="Add a person (e.g., Sam)" />
+        <button class="btn-primary" id="addPerson">Add</button>
+      </div>
+      <ul id="peopleList" class="muted" style="list-style:none; padding-left:0; margin:0;"></ul>
+    </div>
+    <div class="card third">
+      <h2>New Task</h2>
+      <div class="toolbar" style="flex-direction:column; align-items:stretch;">
+        <input id="taskTitle" placeholder="Task (e.g., Vacuum living room)" />
+        <div class="row">
+          <select id="taskRoom"><option value="">Room (optional)</option></select>
+          <select id="taskPerson"><option value="">Assign to (optional)</option></select>
+        </div>
+        <div class="row">
+          <select id="taskFrequency">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="biweekly">Every 2 weeks</option>
+            <option value="monthly">Monthly</option>
+            <option value="custom">Custom days…</option>
+          </select>
+          <input id="taskEveryNDays" class="hidden" type="number" min="1" value="3" style="width:130px" />
+          <input id="taskStart" type="date" />
+        </div>
+        <button class="btn-primary" id="createTask">Create Task</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>All Tasks</h2>
+      <div id="allList"></div>
+      <div id="allEmpty" class="empty hidden">No tasks yet. Use “New Task” to start.</div>
+    </div>
+  </section>
+  <p class="footer">All data stays in your browser (local only). You can export/import JSON for backup.</p>
+</main>
+
+<nav class="tabbar">
+  <button data-tab="today">Today</button>
+  <button data-tab="upcoming">Upcoming</button>
+  <button data-tab="tasks">All</button>
+  <button data-tab="settings">Settings</button>
+</nav>
+
+<script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js');
+    });
+  }
+</script>
+</body>
+</html>
